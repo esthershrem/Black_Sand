@@ -1,0 +1,131 @@
+#include <LiquidCrystal.h>
+#include <Servo.h>
+
+// Stepper motor
+#define STEPPER_PIN_1 9
+#define STEPPER_PIN_2 10
+#define STEPPER_PIN_3 11
+#define STEPPER_PIN_4 12
+int step_number = 0;
+unsigned long lastStepperTime = 0;
+const int stepperInterval = 2; // Adjust for speed
+
+// LCD
+const int rs = 13, en = 7, d4 = 0, d5 = 1, d6 = 6, d7 = 2;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+byte sunChar[8] = {
+  0b00100,
+  0b01010,
+  0b10101,
+  0b01110,
+  0b01110,
+  0b10101,
+  0b01010,
+  0b00100
+};
+
+// DC Motor
+#define ENABLE 5
+#define DIRA 3
+#define DIRB 4
+const int motorSpeed = 80; // Adjust speed
+unsigned long lastMotorTime = 0;
+
+// Servo
+Servo myservo;
+int servoPos = 0;
+bool servoIncreasing = true;
+unsigned long lastServoTime = 0;
+const int servoInterval = 15; // Servo movement speed
+
+void setup() {
+  // Stepper Motor
+  pinMode(STEPPER_PIN_1, OUTPUT);
+  pinMode(STEPPER_PIN_2, OUTPUT);
+  pinMode(STEPPER_PIN_3, OUTPUT);
+  pinMode(STEPPER_PIN_4, OUTPUT);
+
+  // LCD
+  lcd.begin(16, 2);
+  lcd.createChar(0, sunChar);
+  lcd.clear();
+  lcd.setCursor(3, 0);
+  lcd.print("Black Sand");
+  lcd.setCursor(2, 1);
+  lcd.print("From Panama");
+
+  // DC Motor
+  pinMode(ENABLE, OUTPUT);
+  pinMode(DIRA, OUTPUT);
+  pinMode(DIRB, OUTPUT);
+  digitalWrite(DIRA, HIGH);
+  digitalWrite(DIRB, LOW);
+  digitalWrite(ENABLE, HIGH);
+  Serial.begin(9600);
+  Serial.println("Motor running very slowly.");
+
+  // Servo
+  myservo.attach(8);
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+
+  // Stepper motor logic
+  if (currentMillis - lastStepperTime >= stepperInterval) {
+    lastStepperTime = currentMillis;
+    OneStep();
+  }
+
+  // Motor control (PWM)
+  if (currentMillis - lastMotorTime >= 100) { // Adjust timing as needed
+    lastMotorTime = currentMillis;
+    analogWrite(ENABLE, motorSpeed);
+  }
+
+  // Servo control
+  if (currentMillis - lastServoTime >= servoInterval) {
+    lastServoTime = currentMillis;
+    if (servoIncreasing) {
+      servoPos += 2;
+      if (servoPos >= 180) servoIncreasing = false;
+    } else {
+      servoPos -= 2;
+      if (servoPos <= 0) servoIncreasing = true;
+    }
+    myservo.write(servoPos);
+  }
+}
+
+// Function to step the motor forward continuously
+void OneStep() {
+  switch (step_number) {
+    case 0:
+      digitalWrite(STEPPER_PIN_1, HIGH);
+      digitalWrite(STEPPER_PIN_2, HIGH);
+      digitalWrite(STEPPER_PIN_3, LOW);
+      digitalWrite(STEPPER_PIN_4, LOW);
+      break;
+    case 1:
+      digitalWrite(STEPPER_PIN_1, LOW);
+      digitalWrite(STEPPER_PIN_2, HIGH);
+      digitalWrite(STEPPER_PIN_3, HIGH);
+      digitalWrite(STEPPER_PIN_4, LOW);
+      break;
+    case 2:
+      digitalWrite(STEPPER_PIN_1, LOW);
+      digitalWrite(STEPPER_PIN_2, LOW);
+      digitalWrite(STEPPER_PIN_3, HIGH);
+      digitalWrite(STEPPER_PIN_4, HIGH);
+      break;
+    case 3:
+      digitalWrite(STEPPER_PIN_1, HIGH);
+      digitalWrite(STEPPER_PIN_2, LOW);
+      digitalWrite(STEPPER_PIN_3, LOW);
+      digitalWrite(STEPPER_PIN_4, HIGH);
+      break;
+  }
+
+  step_number++;
+  if (step_number > 3) step_number = 0;
+}
